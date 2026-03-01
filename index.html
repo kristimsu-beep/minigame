@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PINIA RP: TRON BIKE EDITION</title>
+    <style>
+        :root { --neon: #00f2ff; --pink: #ff0055; --gold: #ffd700; --hero: #ff3b3b; }
+        body { margin: 0; background: #000; color: #fff; font-family: 'Arial Black', sans-serif; overflow: hidden; touch-action: none; }
+
+        /* Окружение */
+        .rain { position: absolute; width: 1px; height: 40px; background: rgba(0, 242, 255, 0.15); z-index: 1; pointer-events: none; animation: rFall 0.8s linear infinite; }
+        @keyframes rFall { to { transform: translateY(100vh); } }
+        #bg-city { position: absolute; width: 200%; height: 100%; z-index: 0; transition: 1s; }
+        .build { position: absolute; bottom: 100px; width: 80px; background: rgba(255,255,255,0.03); border-top: 1px solid var(--neon); }
+
+        /* Вывеска */
+        #loader { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #000; z-index: 5000; position: relative; }
+        .neon-sign { font-size: 60px; color: #fff; padding: 20px; border: 4px solid #fff; border-radius: 15px; text-shadow: 0 0 20px var(--neon); box-shadow: 0 0 20px var(--neon); animation: nFlicker 3s infinite; }
+        @keyframes nFlicker { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+        /* Поле */
+        #game { display: none; position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+        #floor { position: absolute; bottom: 0; width: 100%; height: 100px; border-top: 4px solid var(--neon); background: #0a0a1a; z-index: 5; transition: 0.1s; }
+
+        /* Игрок и Реалистичный Байк */
+        #p-wrap { position: absolute; bottom: 100px; left: 80px; width: 100px; height: 100px; z-index: 10; transition: 0.1s; }
+        
+        /* КРУТОЙ МОТОЦИКЛ */
+        #bike { position: absolute; bottom: -5px; left: -10px; width: 110px; height: 45px; display: none; z-index: 9; }
+        .bike-body { position: absolute; bottom: 10px; left: 15px; width: 80px; height: 25px; background: #111; border: 2px solid var(--neon); border-radius: 40% 60% 30% 30%; box-shadow: inset 0 0 10px var(--neon), 0 0 15px var(--neon); }
+        .bike-wheel { position: absolute; bottom: 0; width: 32px; height: 32px; background: #000; border: 3px solid var(--neon); border-radius: 50%; box-shadow: 0 0 10px var(--neon); animation: wheelSpin 0.3s linear infinite; }
+        .wheel-back { left: 0; }
+        .wheel-front { right: 0; }
+        .bike-light { position: absolute; right: 10px; top: 12px; width: 10px; height: 5px; background: #fff; box-shadow: 10px 0 20px #fff; border-radius: 50%; }
+        @keyframes wheelSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .p-head { width: 30px; height: 30px; background: var(--hero); border-radius: 50%; margin: 0 auto; box-shadow: 0 0 15px var(--hero); border: 2px solid #000; position: relative; }
+        .p-head::after { content: '👀'; position: absolute; top: 4px; left: 16px; font-size: 14px; }
+        .p-body { width: 22px; height: 45px; background: var(--hero); border-radius: 8px; margin: -4px auto; border: 1.5px solid #fff; position: relative; }
+        .ak47 { position: absolute; width: 45px; height: 10px; background: #222; top: 15px; left: 12px; border-right: 12px solid #000; }
+        .laser { position: absolute; width: 400px; height: 1px; background: rgba(255,0,0,0.6); top: 18px; left: 55px; display: none; }
+        .leg { width: 10px; height: 25px; background: var(--hero); position: absolute; bottom: -22px; border-radius: 4px; }
+        .leg-l { left: 0; animation: rAnim 0.3s infinite alternate; }
+        .leg-r { right: 0; animation: rAnim 0.3s infinite alternate-reverse; }
+        @keyframes rAnim { from { transform: rotate(-30deg); } to { transform: rotate(30deg); } }
+
+        /* Враги */
+        .obj { position: absolute; bottom: 100px; z-index: 6; }
+        .monster { font-size: 55px; filter: drop-shadow(0 0 15px var(--pink)); }
+        .bush { width: 50px; height: 50px; background: #2ecc71; border-radius: 50% 50% 5% 5%; box-shadow: 0 0 15px #2ecc71; }
+        .boss { font-size: 140px; filter: drop-shadow(0 0 30px red); }
+        .fly-obj { bottom: 220px !important; }
+
+        /* Интерфейс */
+        #stats { position: absolute; top: 20px; left: 20px; z-index: 100; font-size: 20px; color: var(--neon); text-shadow: 0 0 10px #000; }
+        #ult-bar { position: absolute; top: 20px; right: 20px; width: 150px; height: 15px; border: 2px solid #fff; background: rgba(255,255,255,0.1); }
+        #ult-fill { width: 0%; height: 100%; background: var(--gold); box-shadow: 0 0 10px var(--gold); transition: 0.3s; }
+        #boss-hp { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); width: 250px; height: 12px; background: #333; border: 2px solid #fff; display: none; }
+        #hp-fill { width: 100%; height: 100%; background: red; }
+
+        /* Магазин */
+        #shop { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); border: 3px solid var(--neon); padding: 30px; border-radius: 20px; z-index: 4000; text-align: center; display: none; }
+        .s-item { margin: 10px 0; padding: 12px; border: 1px solid #fff; cursor: pointer; border-radius: 8px; }
+        .s-item:hover { background: var(--neon); color: #000; }
+
+        .ctrls { position: fixed; bottom: 20px; right: 20px; display: flex; gap: 12px; z-index: 3000; }
+        .btn { width: 80px; height: 80px; border-radius: 50%; border: 4px solid #fff; font-size: 30px; cursor: pointer; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; color: #fff; }
+        #u-btn { display: none; background: var(--pink); }
+
+        .bullet { position: absolute; width: 15px; height: 4px; background: var(--gold); box-shadow: 0 0 10px var(--gold); border-radius: 2px; }
+        .rocket { position: absolute; width: 45px; height: 15px; background: #f40; box-shadow: 0 0 30px #f40; border-radius: 5px; }
+            /* Стили Мерседеса */
+        #mercedes { position: absolute; bottom: -15px; left: -25px; width: 140px; height: 55px; display: none; z-index: 9; }
+        .merc-body { position: absolute; bottom: 10px; left: 10px; width: 120px; height: 35px; background: #111; border: 2px solid #fff; border-radius: 20px 60px 10px 10px; box-shadow: 0 0 20px currentColor; }
+        .merc-window { position: absolute; top: 5px; left: 30px; width: 40px; height: 15px; background: rgba(255,255,255,0.2); border-radius: 10px 30px 0 0; }
+        .merc-logo { position: absolute; right: 15px; top: 10px; font-size: 10px; color: #fff; }
+        .merc-wheel { position: absolute; bottom: 0; width: 38px; height: 38px; background: #000; border: 3px solid #fff; border-radius: 50%; animation: wheelSpin 0.15s linear infinite; }
+        .m-back { left: 5px; }
+        .m-front { right: 5px; }
+        .merc-light { position: absolute; right: 5px; top: 20px; width: 12px; height: 6px; background: #fff; box-shadow: 15px 0 25px #fff; border-radius: 50%; }
+        /* Эффект неонового дыма */
+        .smoke-particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: currentColor; /* Цвет будет браться из цвета машины */
+            border-radius: 50%;
+            filter: blur(4px);
+            z-index: 8;
+            pointer-events: none;
+            animation: smokeMove 0.6s forwards ease-out;
+        }
+
+        @keyframes smokeMove {
+            0% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+            100% { transform: translate(-60px, -25px) scale(2); opacity: 0; }
+        }
+                #police { position: absolute; bottom: 100px; left: -200px; width: 120px; height: 50px; z-index: 8; transition: left 1s; }
+        .pol-body { position: absolute; bottom: 10px; width: 100px; height: 35px; background: #fff; border: 3px solid #0033cc; border-radius: 5px 40px 5px 5px; }
+        .pol-siren { position: absolute; top: -10px; left: 30px; width: 20px; height: 10px; animation: siren 0.4s infinite; }
+        @keyframes siren { 0% { background: red; box-shadow: 0 0 20px red; } 50% { background: blue; box-shadow: 0 0 20px blue; } }
+        .pol-wheel { position: absolute; bottom: 0; width: 30px; height: 30px; background: #000; border: 2px solid #333; border-radius: 50%; animation: wheelSpin 0.2s linear infinite; }
+
+        #heli { 
+            position: absolute; top: 50px; left: -300px; 
+            font-size: 50px; z-index: 100; transition: transform 0.5s; 
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .h-propeller { 
+            width: 60px; height: 4px; background: #fff; 
+            animation: h-spin 0.1s linear infinite; box-shadow: 0 0 10px #fff;
+        }
+        #heli-hp { width: 60px; height: 6px; background: #333; border: 1px solid #fff; margin-top: 5px; display: none; }
+        #heli-hp-inner { width: 100%; height: 100%; background: #39ff14; transition: 0.2s; }
+
+        /* Дым горящего вертолета */
+        .heli-smoke {
+            position: absolute; width: 15px; height: 15px; background: rgba(100,100,100,0.7);
+            border-radius: 50%; filter: blur(5px); animation: heliSmokeMove 1s forwards;
+        }
+        @keyframes heliSmokeMove {
+            0% { transform: translateY(0) scale(1); opacity: 0.8; }
+            100% { transform: translateY(-50px) scale(3); opacity: 0; }
+        }
+        @keyframes h-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+
+
+
+    </style>
+</head>
+<body>
+
+<div id="loader">
+    <h1 class="neon-sign">PINIA RP</h1>
+    <button onclick="init()" style="margin-top:40px; padding: 15px 40px; border:2px solid #fff; background:none; color:#fff; cursor:pointer;">ЗАПУСТИТЬ</button>
+</div>
+
+<div id="shop">
+    <h2 style="color:var(--neon)">CYBER SHOP</h2>
+    <div class="s-item" onclick="buy('laser')">Лазерный прицел (50💰)</div>
+    <div class="s-item" onclick="buy('speed')">Турбо-пули (100💰)</div>
+    <button onclick="toggleShop(false)" style="margin-top:10px;">ВЫХОД</button>
+</div>
+
+<div id="game">
+    <div id="bg-city"></div>
+    <div id="stats">SCORE: <span id="sc">0</span> | COINS: <span id="cn">0</span></div>
+    <div id="ult-bar"><div id="ult-fill"></div></div>
+    <div id="boss-hp"><div id="hp-fill"></div></div>
+    
+    <!-- ПОЛИЦИЯ (Едет сзади игрока, не прыгает с ним) -->
+    <div id="police">
+        <div class="pol-wheel" style="left:5px"></div>
+        <div class="pol-body"><div class="pol-siren"></div></div>
+        <div class="pol-wheel" style="right:25px"></div>
+    </div>
+
+    <div id="heli">
+        <div class="h-propeller"></div>
+        <div class="h-body">🛸</div> <!-- Моделька вертолета -->
+        <div id="heli-hp"><div id="heli-hp-inner"></div></div>
+    </div>
+
+
+    <div id="p-wrap">
+        <!-- БАЙК -->
+        <div id="bike">
+            <div class="bike-wheel wheel-back"></div>
+            <div class="bike-body"></div>
+            <div class="bike-wheel wheel-front"></div>
+            <div class="bike-light"></div>
+        </div>
+
+        <!-- МЕРСЕДЕС -->
+        <div id="mercedes">
+            <div class="merc-wheel m-back"></div>
+            <div class="merc-body">
+                <div class="merc-window"></div>
+                <div class="merc-logo">⭐</div>
+            </div>
+            <div class="merc-wheel m-front"></div>
+            <div class="merc-light"></div>
+        </div>
+
+        <!-- ИГРОК -->
+        <div class="p-head"></div>
+        <div class="p-body">
+            <div class="ak47">
+                <div class="laser" id="l-dot"></div>
+            </div>
+        </div>
+        <div class="leg leg-l"></div>
+        <div class="leg leg-r"></div>
+    </div>
+    
+    <div id="floor"></div>
+</div>
+
+
+
+<div class="ctrls" id="ui-btns" style="display:none;">
+    <button class="btn" onclick="toggleShop(true)">🛒</button>
+    <button class="btn" id="u-btn" onclick="useUlt()">🚀</button>
+    <button class="btn" onclick="jump()">🔼</button>
+    <button class="btn" id="s-btn" onmousedown="fire=true" onmouseup="fire=false" ontouchstart="fire=true" ontouchend="fire=false">🔫</button>
+</div>
+
+<script>
+    const game = document.getElementById('game'), 
+          p = document.getElementById('p-wrap'), 
+          floor = document.getElementById('floor');
+
+    let copActive = false; 
+    let copShootTimer = 0; 
+
+    // Добавляем heliActive, heliHP, heliPhase и hx сюда:
+    let sc = 0, cn = 0, live = false, fire = false, py = 0, dy = 0, ult = 0, 
+        onBike = false, onCar = false, bSpeed = 18,
+        heliActive = false, heliHP = 20, heliPhase = 'entry', hx = -300; 
+
+    let obstacles = [], bossActive = false, bossHP = 10, hasShield = false;
+    
+    const gravity = -0.7;
+
+    // ... далее ваша функция init()
+
+
+    function init() {
+        document.getElementById('loader').style.display = 'none';
+        game.style.display = 'block';
+        document.getElementById('ui-btns').style.display = 'flex';
+        live = true;
+        for(let i=0; i<40; i++) {
+            let r = document.createElement('div'); r.className='rain';
+            r.style.left = Math.random()*100+"vw"; r.style.top = Math.random()*-100+"vh";
+            game.appendChild(r);
+            let bl = document.createElement('div'); bl.className='build';
+            bl.style.left = (i*200)+"px"; bl.style.height = (50+Math.random()*400)+"px";
+            document.getElementById('bg-city').appendChild(bl);
+        }
+        loop(); spawn();
+    }
+
+    function jump() { if(py === 0 && live) dy = 16; }
+    function toggleShop(s) { document.getElementById('shop').style.display = s ? 'block' : 'none'; live = !s; if(live) loop(); }
+
+function loop() {
+    if(!live) return;
+    
+    // Движение игрока (Прыжок и Гравитация)
+    py += dy; dy += gravity;
+    if(py <= 0) { py = 0; dy = 0; }
+    p.style.bottom = (100 + py) + "px";
+
+    // Авто-стрельба
+    if(fire && Math.random() > 0.85) { createBullet(); pulse(); }
+
+    // --- 1. ЛОГИКА ТРАНСПОРТА И ПРОГРЕССИИ ---
+    if(sc > 100) game.style.filter = "hue-rotate(90deg)";
+
+    // Переход на Мерседес (250+ очков)
+    if (sc >= 250 && !onCar) {
+        onCar = true; onBike = false;
+        document.getElementById('bike').style.display = 'none';
+        const merc = document.getElementById('mercedes');
+        merc.style.display = 'block';
+        const color = `hsl(${Math.floor(Math.random() * 360)}, 100%, 50%)`;
+        merc.style.color = color;
+        merc.querySelector('.merc-body').style.borderColor = color;
+        merc.querySelectorAll('.merc-wheel').forEach(w => w.style.borderColor = color);
+        document.querySelectorAll('.leg').forEach(l => l.style.display = 'none');
+    } 
+    // Переход на Байк (150+ очков)
+    else if(sc > 150 && !onBike && !onCar) {
+        onBike = true; 
+        document.getElementById('bike').style.display = 'block';
+        document.querySelectorAll('.leg').forEach(l => l.style.display = 'none');
+    }
+
+    if (onCar && Math.random() > 0.6) createSmoke();
+
+    // --- 2. ЛОГИКА ПОГОНИ (Копы и Вертолет) ---
+    if (sc >= 400 && !copActive) {
+        copActive = true;
+        document.getElementById('police').style.left = '20px';
+    }
+
+    if (copActive) {
+        copShootTimer++;
+        if (copShootTimer > 100) {
+            createCopBullet(130, 130); // Пуля от машины копов
+            copShootTimer = 0;
+        }
+    }
+
+    if (sc >= 500 && heliPhase !== 'dead') {
+        heliActive = true;
+        const heli = document.getElementById('heli');
+        heli.style.display = 'block';
+        // Убедитесь, что элемент heli-hp существует в HTML
+        if(document.getElementById('boss-hp')) document.getElementById('boss-hp').style.display = 'block';
+
+        if (heliPhase === 'entry') {
+            hx += 8;
+            heli.style.left = hx + 'px';
+            if (hx > window.innerWidth - 250) heliPhase = 'turn';
+        } 
+        else if (heliPhase === 'turn') {
+            heli.style.transform = 'scaleX(-1)';
+            heliPhase = 'attack';
+        } 
+        else if (heliPhase === 'attack') {
+            hx -= 1.2; // Вертолет медленно настигает игрока слева
+            heli.style.left = hx + 'px';
+            heli.style.top = (150 + Math.sin(Date.now()/300)*30) + "px"; // Покачивание
+            
+            if (Math.random() > 0.97) createCopBullet(hx + 50, 250); 
+            if (heliHP <= 8 && Math.random() > 0.8) createHeliSmoke();
+        }
+    }
+
+    // --- 3. ДВИЖЕНИЕ ПРЕПЯТСТВИЙ ---
+    obstacles.forEach((obj, idx) => {
+        let currentSpeed = onCar ? 16 : (onBike ? 12 : 7);
+        obj.x -= (currentSpeed + sc/40);
+        obj.el.style.left = obj.x + "px";
+
+        let hY = obj.isFly ? 220 : 100;
+        // Коллизия с игроком
+        if(obj.x > 40 && obj.x < 140 && (100 + py) > hY - 40 && (100 + py) < hY + 60) {
+            if((onBike || onCar) && !obj.isMon && !obj.isFly && !obj.isB) {
+                destroy(obj, idx); // Транспорт давит кусты
+            } else if (hasShield) {
+                hasShield = false; p.style.boxShadow = "none"; destroy(obj, idx);
+            } else { 
+                gameOver(); 
+            }
+        }
+        // Удаление за экраном
+        if(obj.x < -250) { 
+            obj.el.remove(); 
+            obstacles.splice(idx, 1); 
+            sc++; 
+            updateUI(); 
+        }
+    });
+
+    // --- 4. ДВИЖЕНИЕ ВСЕХ ПУЛЬ ---
+    document.querySelectorAll('.bullet, .rocket').forEach(b => {
+        let bx = parseInt(b.style.left);
+        let by = parseInt(b.style.bottom);
+        let isR = b.classList.contains('rocket');
+        let isCop = b.dataset.isCop === "true";
+        
+        if (isCop) {
+            bx -= 15; // Пули врагов летят ВЛЕВО (в игрока)
+        } else {
+            bx += isR ? 22 : bSpeed; // Ваши пули летят ВПРАВО
+        }
+        
+        b.style.left = bx + "px";
+
+        if (isCop) {
+            // Попадание врага в игрока
+            if (bx > 70 && bx < 130 && (100+py) > by - 50 && (100+py) < by + 50) {
+                if (hasShield) { 
+                    hasShield = false; p.style.boxShadow = "none"; b.remove(); 
+                } else { 
+                    gameOver(); 
+                }
+            }
+        } else {
+            // Ваше попадание в вертолет
+            if (heliActive && heliPhase === 'attack' && bx > hx && bx < hx + 150 && by > 180) {
+                heliHP -= isR ? 5 : 1;
+                b.remove();
+                let hpBar = document.getElementById('hp-fill'); // Используем общий бар босса
+                if(hpBar) hpBar.style.width = (heliHP * 5) + "%";
+                if (heliHP <= 0) heliFall();
+            }
+            // Ваше попадание в обычных врагов
+            obstacles.forEach((obj, idx) => {
+                let objY = obj.isFly ? 220 : 100;
+                if (bx > obj.x && bx < obj.x + 80 && by > objY - 20 && by < objY + 80) {
+                    if (obj.isB) {
+                        bossHP -= isR ? 5 : 1;
+                        if(document.getElementById('hp-fill')) document.getElementById('hp-fill').style.width = (bossHP * 10) + "%";
+                        if (bossHP <= 0) destroy(obj, idx, true);
+                    } else { 
+                        destroy(obj, idx); 
+                    }
+                    if (!isR) b.remove();
+                }
+            });
+        }
+
+        // Удаление пули за границами
+        if (bx > window.innerWidth + 100 || bx < -100) b.remove();
+    });
+
+    requestAnimationFrame(loop);
+}
+
+// Вспомогательная функция для пуль врагов
+function createCopBullet(x, y) {
+    const b = document.createElement('div');
+    b.className = 'bullet';
+    b.style.background = '#ff0055'; 
+    b.style.boxShadow = "0 0 10px #ff0055";
+    b.dataset.isCop = "true";
+    b.style.left = x + 'px';
+    b.style.bottom = y + 'px';
+    game.appendChild(b);
+}
+
+
+function createHeliSmoke() {
+    const sm = document.createElement('div');
+    sm.className = 'heli-smoke';
+    sm.style.left = (hx + 30) + 'px'; sm.style.top = '60px';
+    game.appendChild(sm);
+    setTimeout(() => sm.remove(), 1000);
+}
+
+function heliFall() {
+    heliPhase = 'dead';
+    const heli = document.getElementById('heli');
+    heli.style.transition = "top 2s cubic-bezier(0.6, -0.28, 0.735, 0.045), left 2s linear";
+    heli.style.top = (window.innerHeight - 100) + "px";
+    heli.style.transform = "rotate(180deg)";
+    setTimeout(() => {
+        shake();
+        heli.innerHTML = "💥";
+        setTimeout(() => { heli.style.display = 'none'; heliActive = false; }, 1000);
+    }, 2000);
+}
+
+
+
+    function createBullet(isD = false) {
+        const b = document.createElement('div'); b.className = isD ? 'bullet drone-b' : 'bullet';
+        b.style.left = isD ? '60px' : '150px';
+        b.style.bottom = (isD ? 180+py : 135+py) + "px";
+        game.appendChild(b);
+        if(!isD) shake();
+    }
+
+    function destroy(obj, idx, isB = false) {
+        obj.el.style.transform = "scale(0) rotate(180deg)";
+        setTimeout(() => obj.el.remove(), 200);
+        obstacles.splice(idx, 1);
+        sc += isB ? 25 : 2; cn += isB ? 10 : 1;
+        if(isB) { bossActive = false; document.getElementById('boss-hp').style.display = 'none'; }
+        ult = Math.min(100, ult + 6); updateUI();
+        if(Math.random() > 0.95 && !hasShield) { hasShield = true; p.style.boxShadow = "0 0 20px var(--neon)"; }
+    }
+
+    function useUlt() {
+        if(ult < 100) return;
+        const r = document.createElement('div'); r.className = 'rocket';
+        r.style.left = '100px'; r.style.bottom = (140 + py) + "px";
+        game.appendChild(r); ult = 0; updateUI();
+    }
+
+    function spawn() {
+        if(!live) return;
+        if(sc > 0 && sc % 50 === 0 && !bossActive) {
+            bossActive = true; bossHP = 10;
+            const el = document.createElement('div'); el.className = 'obj boss';
+            el.innerHTML = '🤖'; el.style.left = '110vw'; game.appendChild(el);
+            obstacles.push({ el: el, x: window.innerWidth, isB: true });
+            document.getElementById('boss-hp').style.display = 'block';
+            document.getElementById('hp-fill').style.width = "100%";
+        } else {
+            const isM = Math.random() > 0.5, isF = Math.random() > 0.8;
+            const el = document.createElement('div'); el.className = isM ? 'obj monster' : 'obj bush';
+            if(isF) el.classList.add('fly-obj'); el.innerHTML = isM ? '👾' : '';
+            el.style.left = '110vw'; game.appendChild(el);
+            obstacles.push({ el: el, x: window.innerWidth, isMon: isM, isFly: isF });
+        }
+        setTimeout(spawn, (onBike ? 800 : 1200) + Math.random() * 1000);
+    }
+
+    function buy(it) {
+        if(it === 'laser' && cn >= 50) { cn -= 50; document.getElementById('l-dot').style.display='block'; }
+        if(it === 'speed' && cn >= 100) { cn -= 100; bSpeed = 25; }
+        updateUI();
+    }
+
+    function pulse() { floor.style.borderColor = "var(--pink)"; setTimeout(() => floor.style.borderColor = "var(--neon)", 100); }
+    function shake() { game.style.transform = `translate(${Math.random()*3}px, ${Math.random()*3}px)`; setTimeout(() => game.style.transform = "none", 50); }
+    function updateUI() {
+        document.getElementById('sc').innerText = sc; document.getElementById('cn').innerText = cn;
+        document.getElementById('ult-fill').style.width = ult + "%";
+        document.getElementById('u-btn').style.display = ult >= 100 ? 'flex' : 'none';
+    }
+   function gameOver() {
+    live = false;
+    
+    // Прячем транспорт и сбрасываем состояния
+    onCar = false;
+    onBike = false;
+    document.getElementById('bike').style.display = 'none';
+    document.getElementById('mercedes').style.display = 'none';
+    document.querySelectorAll('.leg').forEach(l => l.style.display = 'block');
+
+    // Сброс полиции
+    copActive = false;
+    const police = document.getElementById('police');
+    if(police) police.style.left = '-250px';
+    
+    // Сброс вертолета
+    heliActive = false;
+    heliPhase = 'entry';
+    hx = -300;
+    const heli = document.getElementById('heli');
+    if(heli) {
+        heli.style.left = '-250px';
+        heli.style.transform = 'scaleX(1)'; // Убираем разворот
+    }
+
+    // Удаляем все активные пули и препятствия с экрана
+    document.querySelectorAll('.obj, .bullet, .rocket, .smoke-particle').forEach(el => el.remove());
+    obstacles = [];
+
+    alert("WASTED! SCORE: " + sc);
+    
+    // Вместо reload можно вызвать меню старта
+    // showMenu(); 
+    location.reload(); 
+}
+
+
+    function createSmoke() {
+    const merc = document.getElementById('mercedes');
+    // Если машина не активна или скрыта — ничего не создаем
+    if (!onCar || merc.style.display === 'none') return;
+ы
+    const smoke = document.createElement('div');
+    smoke.className = 'smoke-particle';
+    smoke.style.color = merc.style.color; // Тот самый рандомный цвет
+    
+    // Позиционируем у заднего колеса (цифры можно подправить под модель)
+    smoke.style.left = (p.offsetLeft + 20) + 'px'; 
+    smoke.style.bottom = (100 + py + 10) + 'px';
+    
+    game.appendChild(smoke);
+    setTimeout(() => smoke.remove(), 600);
+}
+
+</script>
+</body>
+</html>
